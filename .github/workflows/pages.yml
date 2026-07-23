@@ -41,6 +41,7 @@ jobs:
             --exclude IMG_3681.MP4 \
             --exclude README_HOSTING.md \
             --exclude netlify.toml
+          sed -i "s/__BUILD_VERSION__/${GITHUB_SHA}/g" _site/sw.js
 
       - name: Upload static site
         uses: actions/upload-pages-artifact@v4

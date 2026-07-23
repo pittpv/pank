@@ -1,9 +1,9 @@
 {
-  "id": "/",
+  "id": "./",
   "name": "СберБанк Онлайн",
   "short_name": "Сбер",
   "description": "Локальная копия СберБанк Онлайн (Главный и Накопления)",
-  "start_url": "./index.html",
+  "start_url": "./Main.htm",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait-primary",
