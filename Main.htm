@@ -286,7 +286,11 @@ html[data-static-page="main"] {
 
   html[data-static-page="main"] #main .L6qMFkEL.LPFbIg6s {
     background: transparent !important;
-    /* Match Savings title gap under the search row */
+    /* Captured CSS uses margin:-72px + padding-top:88px for sticky overlay —
+       with a fixed opaque header that pulled «Кошелёк» under the search row */
+    margin-top: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
     padding-top: 8px !important;
   }
 
@@ -399,6 +403,9 @@ html[data-static-page="main"] {
 
     var wallet = document.querySelector("#main .L6qMFkEL.LPFbIg6s");
     if (wallet) {
+      wallet.style.setProperty("margin-top", "0px", "important");
+      wallet.style.setProperty("margin-left", "0px", "important");
+      wallet.style.setProperty("margin-right", "0px", "important");
       wallet.style.setProperty("padding-top", WALLET_GAP + "px", "important");
       wallet.style.setProperty("background", "transparent", "important");
     }
