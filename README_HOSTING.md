@@ -100,7 +100,7 @@ server {
 
 ---
 
-### 3. Статический хостинг (GitHub Pages, Netlify, Vercel, Cloudflare Pages)
+### 3. Статический хостинг (GitHub Pages, Netlify, Cloudflare Pages)
 
 #### GitHub Pages
 Просто загрузите все файлы в репозиторий. GitHub Pages автоматически обрабатывает SPA.
@@ -139,34 +139,6 @@ server {
     Content-Type = "application/manifest+json"
 ```
 
-#### Vercel
-Создайте файл `vercel.json`:
-```json
-{
-  "rewrites": [
-    { "source": "/", "destination": "/index.html" },
-    { "source": "/app", "destination": "/Main.htm" },
-    { "source": "/app/main", "destination": "/Main.htm" },
-    { "source": "/app/savings", "destination": "/Savings.htm" },
-    { "source": "/app/(.*)", "destination": "/Main.htm" }
-  ],
-  "headers": [
-    {
-      "source": "/sw.js",
-      "headers": [
-        { "key": "Cache-Control", "value": "no-cache" },
-        { "key": "Service-Worker-Allowed", "value": "/" }
-      ]
-    },
-    {
-      "source": "/(.*).webmanifest",
-      "headers": [
-        { "key": "Content-Type", "value": "application/manifest+json" }
-      ]
-    }
-  ]
-}
-```
 
 ---
 
