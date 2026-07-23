@@ -221,22 +221,42 @@ html[data-static-page] iframe[style*="left:-800px"] {
 html[data-static-page="main"] {
   --main-top-gradient: linear-gradient(135deg, #d6e0ff 0%, #f6e4f1 100%);
   --main-top-gradient-height: 360px;
+  --main-chrome-fill: #d6e0ff;
 }
 
 @media (max-width: 900px) {
   /*
-   * Same chrome geometry as Savings: fixed bar from physical top, icons after safe-area,
-   * 8px under the row to the title. Header is opaque in Main's gradient so scroll
-   * content is covered (not visible through the search row).
+   * Stable Main chrome:
+   * - No background-attachment:fixed (mobile scroll flicker / “falling” wash)
+   * - Opaque solid header fill covers content under search
+   * - Separate fixed wash layer behind content for the page gradient
    */
   html[data-static-page="main"],
   html[data-static-page="main"] body {
-    background:
-      var(--main-top-gradient) center top / 100% var(--main-top-gradient-height) no-repeat fixed,
-      #f1f1f1 !important;
+    background: #f1f1f1 !important;
     padding-top: 0 !important;
     padding-left: 0 !important;
     padding-right: 0 !important;
+  }
+
+  html[data-static-page="main"] body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--main-top-gradient-height);
+    background: var(--main-top-gradient);
+    background-attachment: scroll;
+    pointer-events: none;
+    z-index: 0;
+    transform: translateZ(0);
+  }
+
+  html[data-static-page="main"] .scaffold__section,
+  html[data-static-page="main"] main.scaffold__main {
+    position: relative;
+    z-index: 1;
   }
 
   html[data-static-page="main"] main.scaffold__main {
@@ -255,14 +275,18 @@ html[data-static-page="main"] {
     padding: max(env(safe-area-inset-top, 0px), 28px) 16px 8px !important;
     box-sizing: border-box !important;
     z-index: 1000 !important;
-    background:
-      var(--main-top-gradient) center top / 100% var(--main-top-gradient-height) no-repeat fixed !important;
+    /* Solid opaque chrome — never depends on fixed-attachment painting */
+    background: var(--main-chrome-fill) !important;
+    background-image: none !important;
     -webkit-backdrop-filter: none !important;
     backdrop-filter: none !important;
     box-shadow: none !important;
     isolation: isolate;
     display: flex !important;
     align-items: center !important;
+    transform: translateZ(0);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
   }
 
   html[data-static-page="main"] #scaffold-header-main .scaffold__header-main {
@@ -285,9 +309,8 @@ html[data-static-page="main"] {
   }
 
   html[data-static-page="main"] #main .L6qMFkEL.LPFbIg6s {
+    /* Let the fixed wash show through — do not paint a second scrolling gradient */
     background: transparent !important;
-    /* Captured CSS uses margin:-72px + padding-top:88px for sticky overlay —
-       with a fixed opaque header that pulled «Кошелёк» under the search row */
     margin-top: 0 !important;
     margin-left: 0 !important;
     margin-right: 0 !important;
@@ -336,8 +359,11 @@ html[data-static-page="main"] {
 (function () {
   var MIN_TOP = 28;
   var WALLET_GAP = 8;
-  var GRADIENT =
-    "linear-gradient(135deg, #d6e0ff 0%, #f6e4f1 100%) center top / 100% 360px no-repeat fixed";
+  var CHROME_FILL = "#d6e0ff";
+  var chromeReady = false;
+  var lastWidth = 0;
+  var lastClearance = 0;
+  var resizeTimer = 0;
 
   function measureSafeTop() {
     try {
@@ -354,7 +380,37 @@ html[data-static-page="main"] {
     }
   }
 
-  function apply() {
+  function paintChrome(header, inner, sat) {
+    if (!header) return;
+    header.style.setProperty("position", "fixed", "important");
+    header.style.setProperty("top", "0px", "important");
+    header.style.setProperty("left", "0px", "important");
+    header.style.setProperty("right", "0px", "important");
+    header.style.setProperty("width", "100%", "important");
+    header.style.setProperty("height", "auto", "important");
+    header.style.setProperty("min-height", "0px", "important");
+    header.style.setProperty("margin", "0px", "important");
+    header.style.setProperty("padding", sat + "px 16px 8px", "important");
+    // Solid fill — avoids background-attachment:fixed flicker on scroll
+    header.style.setProperty("background", CHROME_FILL, "important");
+    header.style.setProperty("background-image", "none", "important");
+    header.style.setProperty("box-shadow", "none", "important");
+    header.style.setProperty("-webkit-backdrop-filter", "none", "important");
+    header.style.setProperty("backdrop-filter", "none", "important");
+    header.style.setProperty("z-index", "1000", "important");
+    header.style.setProperty("transform", "translateZ(0)", "important");
+    if (inner) {
+      inner.style.setProperty("padding", "0px", "important");
+    }
+  }
+
+  function apply(force) {
+    var width = window.innerWidth || 0;
+    // Ignore address-bar show/hide (height-only resize) — it caused scroll flashes
+    if (!force && chromeReady && Math.abs(width - lastWidth) < 8) {
+      return;
+    }
+
     var sat = Math.max(measureSafeTop(), MIN_TOP);
     var header = document.getElementById("scaffold-header-main");
     var row = document.getElementById("header-main-content");
@@ -364,28 +420,11 @@ html[data-static-page="main"] {
       document.body.style.setProperty("padding-top", "0px", "important");
       document.body.style.setProperty("padding-left", "0px", "important");
       document.body.style.setProperty("padding-right", "0px", "important");
+      document.body.style.setProperty("background", "#f1f1f1", "important");
+      document.body.style.setProperty("background-image", "none", "important");
     }
 
-    if (header) {
-      // Same geometry as Savings; opaque Main-tone wash covers scrolled content
-      header.style.setProperty("position", "fixed", "important");
-      header.style.setProperty("top", "0px", "important");
-      header.style.setProperty("left", "0px", "important");
-      header.style.setProperty("right", "0px", "important");
-      header.style.setProperty("width", "100%", "important");
-      header.style.setProperty("height", "auto", "important");
-      header.style.setProperty("min-height", "0px", "important");
-      header.style.setProperty("margin", "0px", "important");
-      header.style.setProperty("padding", sat + "px 16px 8px", "important");
-      header.style.setProperty("background", GRADIENT, "important");
-      header.style.setProperty("box-shadow", "none", "important");
-      header.style.setProperty("-webkit-backdrop-filter", "none", "important");
-      header.style.setProperty("backdrop-filter", "none", "important");
-      header.style.setProperty("z-index", "1000", "important");
-    }
-    if (inner) {
-      inner.style.setProperty("padding", "0px", "important");
-    }
+    paintChrome(header, inner, sat);
 
     var clearance = row
       ? Math.ceil(row.getBoundingClientRect().bottom)
@@ -394,6 +433,13 @@ html[data-static-page="main"] {
         : sat + 48;
     if (header) {
       clearance = Math.max(clearance, Math.ceil(header.getBoundingClientRect().bottom));
+    }
+
+    // Avoid tiny clearance thrash from subpixel rounding
+    if (!force && lastClearance && Math.abs(clearance - lastClearance) < 2) {
+      lastWidth = width;
+      chromeReady = true;
+      return;
     }
 
     var main = document.querySelector("main.scaffold__main");
@@ -421,17 +467,38 @@ html[data-static-page="main"] {
       el.style.setProperty("display", "none", "important");
       el.style.setProperty("height", "0px", "important");
     });
+
+    lastWidth = width;
+    lastClearance = clearance;
+    chromeReady = true;
+  }
+
+  function onResize() {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function () {
+      apply(false);
+    }, 200);
   }
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", apply);
+    document.addEventListener("DOMContentLoaded", function () {
+      apply(true);
+    });
   } else {
-    apply();
+    apply(true);
   }
-  window.addEventListener("resize", apply);
-  window.addEventListener("orientationchange", apply);
-  setTimeout(apply, 50);
-  setTimeout(apply, 300);
+  window.addEventListener("resize", onResize);
+  window.addEventListener("orientationchange", function () {
+    setTimeout(function () {
+      apply(true);
+    }, 300);
+  });
+  setTimeout(function () {
+    apply(true);
+  }, 50);
+  setTimeout(function () {
+    apply(true);
+  }, 300);
 })();
 </script>
 <!-- static-header-offset-end -->
