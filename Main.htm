@@ -225,52 +225,68 @@ html[data-static-page="main"] {
 
 @media (max-width: 900px) {
   /*
-   * One continuous top plane: body paints the gradient from the viewport top.
-   * Header stays transparent so status-bar / search / wallet share the same wash.
+   * Same chrome geometry as Savings: fixed bar from physical top, icons after safe-area,
+   * 8px under the row to the title. Header is opaque in Main's gradient so scroll
+   * content is covered (not visible through the search row).
    */
   html[data-static-page="main"],
   html[data-static-page="main"] body {
     background:
       var(--main-top-gradient) center top / 100% var(--main-top-gradient-height) no-repeat fixed,
       #f1f1f1 !important;
+    padding-top: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
   }
 
-  html[data-static-page] main.scaffold__main {
-    /* Cleared precisely by JS to header bottom; CSS fallback ≈ row + status */
-    padding-top: calc(56px + max(env(safe-area-inset-top, 0px), 28px)) !important;
+  html[data-static-page="main"] main.scaffold__main {
+    padding-top: calc(48px + max(env(safe-area-inset-top, 0px), 28px)) !important;
   }
 
-  html[data-static-page] #scaffold-header-main.scaffold__header {
+  html[data-static-page="main"] #scaffold-header-main.scaffold__header {
     position: fixed !important;
-    top: max(env(safe-area-inset-top, 0px), 28px) !important;
+    top: 0 !important;
     left: 0 !important;
     right: 0 !important;
-    width: 100%;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
     margin: 0 !important;
-    padding-top: 0 !important;
-    box-sizing: border-box;
-    z-index: var(--z-index-header-navigation-mobile) !important;
-    background: transparent !important;
+    padding: max(env(safe-area-inset-top, 0px), 28px) 16px 8px !important;
+    box-sizing: border-box !important;
+    z-index: 1000 !important;
+    background:
+      var(--main-top-gradient) center top / 100% var(--main-top-gradient-height) no-repeat fixed !important;
     -webkit-backdrop-filter: none !important;
     backdrop-filter: none !important;
     box-shadow: none !important;
-    isolation: auto;
+    isolation: isolate;
+    display: flex !important;
+    align-items: center !important;
   }
 
-  html[data-static-page] #scaffold-header-main.scaffold__header::before {
+  html[data-static-page="main"] #scaffold-header-main .scaffold__header-main {
+    padding: 0 !important;
+    width: 100% !important;
+  }
+
+  html[data-static-page="main"] #scaffold-header-main.scaffold__header::before {
     content: none !important;
     display: none !important;
   }
 
-  html[data-static-page="main"] #scaffold-header-main.scaffold__header {
-    background: transparent !important;
-    box-shadow: none !important;
+  html[data-static-page="main"] .scaffold__region-header-header,
+  html[data-static-page="main"] #app-bar-headers,
+  html[data-static-page="main"] #scaffold-notifications {
+    display: none !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   html[data-static-page="main"] #main .L6qMFkEL.LPFbIg6s {
-    /* Let the same fixed body gradient show through — no second wash */
     background: transparent !important;
-    /* Tight rhythm under the search row (was 72px + main pad = oversized gap) */
+    /* Match Savings title gap under the search row */
     padding-top: 8px !important;
   }
 
@@ -316,6 +332,8 @@ html[data-static-page="main"] {
 (function () {
   var MIN_TOP = 28;
   var WALLET_GAP = 8;
+  var GRADIENT =
+    "linear-gradient(135deg, #d6e0ff 0%, #f6e4f1 100%) center top / 100% 360px no-repeat fixed";
 
   function measureSafeTop() {
     try {
@@ -333,24 +351,50 @@ html[data-static-page="main"] {
   }
 
   function apply() {
-    var top = Math.max(measureSafeTop(), MIN_TOP);
+    var sat = Math.max(measureSafeTop(), MIN_TOP);
     var header = document.getElementById("scaffold-header-main");
+    var row = document.getElementById("header-main-content");
+    var inner = header && header.querySelector(".scaffold__header-main");
+
+    if (document.body) {
+      document.body.style.setProperty("padding-top", "0px", "important");
+      document.body.style.setProperty("padding-left", "0px", "important");
+      document.body.style.setProperty("padding-right", "0px", "important");
+    }
+
     if (header) {
-      header.style.setProperty("top", top + "px", "important");
-      header.style.setProperty("padding-top", "0px", "important");
-      header.style.setProperty("background", "transparent", "important");
+      // Same geometry as Savings; opaque Main-tone wash covers scrolled content
+      header.style.setProperty("position", "fixed", "important");
+      header.style.setProperty("top", "0px", "important");
+      header.style.setProperty("left", "0px", "important");
+      header.style.setProperty("right", "0px", "important");
+      header.style.setProperty("width", "100%", "important");
+      header.style.setProperty("height", "auto", "important");
+      header.style.setProperty("min-height", "0px", "important");
+      header.style.setProperty("margin", "0px", "important");
+      header.style.setProperty("padding", sat + "px 16px 8px", "important");
+      header.style.setProperty("background", GRADIENT, "important");
       header.style.setProperty("box-shadow", "none", "important");
       header.style.setProperty("-webkit-backdrop-filter", "none", "important");
       header.style.setProperty("backdrop-filter", "none", "important");
+      header.style.setProperty("z-index", "1000", "important");
+    }
+    if (inner) {
+      inner.style.setProperty("padding", "0px", "important");
     }
 
-    // Clear only to the bottom of the fixed search row — no extra 72px slab
-    var headerBottom = header
-      ? Math.ceil(header.getBoundingClientRect().bottom)
-      : top + 56;
+    var clearance = row
+      ? Math.ceil(row.getBoundingClientRect().bottom)
+      : header
+        ? Math.ceil(header.getBoundingClientRect().bottom)
+        : sat + 48;
+    if (header) {
+      clearance = Math.max(clearance, Math.ceil(header.getBoundingClientRect().bottom));
+    }
+
     var main = document.querySelector("main.scaffold__main");
     if (main) {
-      main.style.setProperty("padding-top", headerBottom + "px", "important");
+      main.style.setProperty("padding-top", clearance + "px", "important");
     }
 
     var wallet = document.querySelector("#main .L6qMFkEL.LPFbIg6s");
@@ -358,6 +402,18 @@ html[data-static-page="main"] {
       wallet.style.setProperty("padding-top", WALLET_GAP + "px", "important");
       wallet.style.setProperty("background", "transparent", "important");
     }
+
+    ["scaffold-notifications", "app-bar-headers"].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) {
+        el.style.setProperty("display", "none", "important");
+        el.style.setProperty("height", "0px", "important");
+      }
+    });
+    document.querySelectorAll(".scaffold__region-header-header").forEach(function (el) {
+      el.style.setProperty("display", "none", "important");
+      el.style.setProperty("height", "0px", "important");
+    });
   }
 
   if (document.readyState === "loading") {
