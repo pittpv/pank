@@ -14,8 +14,7 @@
       document.documentElement.setAttribute('data-static-page', 'savings');
     } else {
       document.documentElement.setAttribute('data-static-page', 'main');
-      // Paint under iOS/Android status bar before first paint
-      document.documentElement.style.backgroundColor = '#d6e0ff';
+      // Don't force a solid fill — the continuous gradient paints status + header.
     }
   } catch (e) {}
 })();
@@ -162,10 +161,10 @@ html[data-static-page]:not([data-static-page="main"]) body {
   background: #f1f1f1 !important;
 }
 
-/* Main: solid top color so translucent status bar shows lavender, not gray */
+/* Main: base canvas; mobile gradient overlays this in the media query */
 html[data-static-page="main"],
 html[data-static-page="main"] body {
-  background-color: #d6e0ff !important;
+  background-color: #f1f1f1 !important;
 }
 
 /* Keep in-page carousels swipeable */
@@ -206,22 +205,24 @@ html[data-static-page="main"] {
 }
 
 @media (max-width: 900px) {
-  /* Continuously paint lavender under the translucent system status bar */
+  /*
+   * One continuous top plane: body paints the gradient from the viewport top.
+   * Header stays transparent so status-bar / search / wallet share the same wash.
+   */
   html[data-static-page="main"],
   html[data-static-page="main"] body {
     background:
-      var(--main-top-gradient) center top / 100% var(--main-top-gradient-height) no-repeat,
+      var(--main-top-gradient) center top / 100% var(--main-top-gradient-height) no-repeat fixed,
       #f1f1f1 !important;
   }
 
   html[data-static-page] main.scaffold__main {
-    /* Clear fixed header + status offset (header uses top, not padding) */
-    padding-top: calc(64px + max(env(safe-area-inset-top, 0px), 28px)) !important;
+    /* Cleared precisely by JS to header bottom; CSS fallback ≈ row + status */
+    padding-top: calc(56px + max(env(safe-area-inset-top, 0px), 28px)) !important;
   }
 
   html[data-static-page] #scaffold-header-main.scaffold__header {
     position: fixed !important;
-    /* Push whole header below status bar (Android often has safe-area=0) */
     top: max(env(safe-area-inset-top, 0px), 28px) !important;
     left: 0 !important;
     right: 0 !important;
@@ -230,38 +231,28 @@ html[data-static-page="main"] {
     padding-top: 0 !important;
     box-sizing: border-box;
     z-index: var(--z-index-header-navigation-mobile) !important;
-    background: rgba(241, 241, 241, 0.96) !important;
-    -webkit-backdrop-filter: blur(16px) !important;
-    backdrop-filter: blur(16px) !important;
-    box-shadow: 0 1px 0 rgba(38, 38, 38, 0.08);
-    isolation: isolate;
+    background: transparent !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    box-shadow: none !important;
+    isolation: auto;
   }
 
-  /* Paint the status-bar zone above the fixed header so no gray strip shows */
   html[data-static-page] #scaffold-header-main.scaffold__header::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 100%;
-    height: max(env(safe-area-inset-top, 0px), 28px);
-    background: inherit;
-    pointer-events: none;
+    content: none !important;
+    display: none !important;
   }
 
   html[data-static-page="main"] #scaffold-header-main.scaffold__header {
-    background: var(--main-top-gradient) center top / 100% var(--main-top-gradient-height) no-repeat !important;
-    box-shadow: none;
-  }
-
-  html[data-static-page="main"] #scaffold-header-main.scaffold__header::before {
-    background: #d6e0ff;
+    background: transparent !important;
+    box-shadow: none !important;
   }
 
   html[data-static-page="main"] #main .L6qMFkEL.LPFbIg6s {
-    background: var(--main-top-gradient) center top / 100% var(--main-top-gradient-height) no-repeat !important;
-    /* Restore original internal offset to Кошелёк */
-    padding-top: 72px !important;
+    /* Let the same fixed body gradient show through — no second wash */
+    background: transparent !important;
+    /* Tight rhythm under the search row (was 72px + main pad = oversized gap) */
+    padding-top: 8px !important;
   }
 
   html[data-static-page="main"].online-main-entering #main .uXANOpJ5 > :nth-child(n + 3) {
@@ -305,10 +296,11 @@ html[data-static-page="main"] {
 <script>
 (function () {
   var MIN_TOP = 28;
+  var WALLET_GAP = 8;
+
   function measureSafeTop() {
     try {
       var probe = document.createElement("div");
-      probe.setAttribute("data-safe-top-probe", "1");
       probe.style.cssText =
         "position:fixed;left:0;top:0;width:0;visibility:hidden;pointer-events:none;" +
         "height:env(safe-area-inset-top, 0px);padding:0;margin:0;border:0;";
@@ -320,22 +312,35 @@ html[data-static-page="main"] {
       return 0;
     }
   }
+
   function apply() {
     var top = Math.max(measureSafeTop(), MIN_TOP);
     var header = document.getElementById("scaffold-header-main");
     if (header) {
       header.style.setProperty("top", top + "px", "important");
       header.style.setProperty("padding-top", "0px", "important");
+      header.style.setProperty("background", "transparent", "important");
+      header.style.setProperty("box-shadow", "none", "important");
+      header.style.setProperty("-webkit-backdrop-filter", "none", "important");
+      header.style.setProperty("backdrop-filter", "none", "important");
     }
+
+    // Clear only to the bottom of the fixed search row — no extra 72px slab
+    var headerBottom = header
+      ? Math.ceil(header.getBoundingClientRect().bottom)
+      : top + 56;
     var main = document.querySelector("main.scaffold__main");
     if (main) {
-      main.style.setProperty("padding-top", 64 + top + "px", "important");
+      main.style.setProperty("padding-top", headerBottom + "px", "important");
     }
+
     var wallet = document.querySelector("#main .L6qMFkEL.LPFbIg6s");
     if (wallet) {
-      wallet.style.setProperty("padding-top", "72px", "important");
+      wallet.style.setProperty("padding-top", WALLET_GAP + "px", "important");
+      wallet.style.setProperty("background", "transparent", "important");
     }
   }
+
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", apply);
   } else {

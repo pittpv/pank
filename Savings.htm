@@ -195,11 +195,15 @@ html[data-static-page] iframe[style*="left:-800px"] {
 }
 
 @media (max-width: 900px) {
-  html[data-static-page] main.scaffold__main {
-    padding-top: calc(64px + max(env(safe-area-inset-top, 0px), 28px)) !important;
+  html[data-static-page="savings"],
+  html[data-static-page="savings"] body {
+    background: #f1f1f1 !important;
   }
 
-  /* Fill under translucent status bar — no gap strip above the header */
+  html[data-static-page] main.scaffold__main {
+    padding-top: calc(56px + max(env(safe-area-inset-top, 0px), 28px)) !important;
+  }
+
   html[data-static-page] #scaffold-header-main.scaffold__header {
     position: fixed !important;
     top: max(env(safe-area-inset-top, 0px), 28px) !important;
@@ -210,22 +214,16 @@ html[data-static-page] iframe[style*="left:-800px"] {
     padding-top: 0 !important;
     box-sizing: border-box;
     z-index: var(--z-index-header-navigation-mobile) !important;
-    background: #f1f1f1 !important;
-    -webkit-backdrop-filter: blur(16px) !important;
-    backdrop-filter: blur(16px) !important;
-    box-shadow: none;
-    isolation: isolate;
+    background: transparent !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    box-shadow: none !important;
+    isolation: auto;
   }
 
   html[data-static-page] #scaffold-header-main.scaffold__header::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 100%;
-    height: max(env(safe-area-inset-top, 0px), 28px);
-    background: #f1f1f1;
-    pointer-events: none;
+    content: none !important;
+    display: none !important;
   }
 
   html[data-static-page="savings"] #main .cCwwo7Ea {
@@ -238,10 +236,10 @@ html[data-static-page] iframe[style*="left:-800px"] {
 <script>
 (function () {
   var MIN_TOP = 28;
+
   function measureSafeTop() {
     try {
       var probe = document.createElement("div");
-      probe.setAttribute("data-safe-top-probe", "1");
       probe.style.cssText =
         "position:fixed;left:0;top:0;width:0;visibility:hidden;pointer-events:none;" +
         "height:env(safe-area-inset-top, 0px);padding:0;margin:0;border:0;";
@@ -253,18 +251,27 @@ html[data-static-page] iframe[style*="left:-800px"] {
       return 0;
     }
   }
+
   function apply() {
     var top = Math.max(measureSafeTop(), MIN_TOP);
     var header = document.getElementById("scaffold-header-main");
     if (header) {
       header.style.setProperty("top", top + "px", "important");
       header.style.setProperty("padding-top", "0px", "important");
+      header.style.setProperty("background", "transparent", "important");
+      header.style.setProperty("box-shadow", "none", "important");
+      header.style.setProperty("-webkit-backdrop-filter", "none", "important");
+      header.style.setProperty("backdrop-filter", "none", "important");
     }
+    var headerBottom = header
+      ? Math.ceil(header.getBoundingClientRect().bottom)
+      : top + 56;
     var main = document.querySelector("main.scaffold__main");
     if (main) {
-      main.style.setProperty("padding-top", 64 + top + "px", "important");
+      main.style.setProperty("padding-top", headerBottom + "px", "important");
     }
   }
+
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", apply);
   } else {
