@@ -108,6 +108,9 @@ html[data-static-page="main"]:not(.online-unlocked) #assistant-region {
       if (done) return;
       done = true;
       document.documentElement.classList.remove('fonts-pending');
+      if (typeof window.__pwaApplyHeaderOffset === 'function') {
+        window.__pwaApplyHeaderOffset();
+      }
     }
     var maxWait = setTimeout(reveal, 800);
     function waitFonts() {
@@ -226,10 +229,10 @@ html[data-static-page="main"] {
 
 @media (max-width: 900px) {
   /*
-   * Stable Main chrome:
-   * - No background-attachment:fixed (mobile scroll flicker / “falling” wash)
-   * - Opaque solid header fill covers content under search
-   * - Separate fixed wash layer behind content for the page gradient
+   * Stable continuous Main wash:
+   * - Same gradient on header + body::before (size 100% x 360px from top)
+   * - No background-attachment:fixed (avoids mobile scroll flicker)
+   * - Opaque header still covers scrolled content under search
    */
   html[data-static-page="main"],
   html[data-static-page="main"] body {
@@ -246,7 +249,11 @@ html[data-static-page="main"] {
     left: 0;
     right: 0;
     height: var(--main-top-gradient-height);
-    background: var(--main-top-gradient);
+    background-color: var(--main-chrome-fill);
+    background-image: var(--main-top-gradient);
+    background-size: 100% var(--main-top-gradient-height);
+    background-position: center top;
+    background-repeat: no-repeat;
     background-attachment: scroll;
     pointer-events: none;
     z-index: 0;
@@ -275,9 +282,13 @@ html[data-static-page="main"] {
     padding: max(env(safe-area-inset-top, 0px), 28px) 16px 8px !important;
     box-sizing: border-box !important;
     z-index: 1000 !important;
-    /* Solid opaque chrome — never depends on fixed-attachment painting */
-    background: var(--main-chrome-fill) !important;
-    background-image: none !important;
+    /* Same gradient slice as the wash — seamless join under search */
+    background-color: var(--main-chrome-fill) !important;
+    background-image: var(--main-top-gradient) !important;
+    background-size: 100% var(--main-top-gradient-height) !important;
+    background-position: center top !important;
+    background-repeat: no-repeat !important;
+    background-attachment: scroll !important;
     -webkit-backdrop-filter: none !important;
     backdrop-filter: none !important;
     box-shadow: none !important;
@@ -309,7 +320,7 @@ html[data-static-page="main"] {
   }
 
   html[data-static-page="main"] #main .L6qMFkEL.LPFbIg6s {
-    /* Let the fixed wash show through — do not paint a second scrolling gradient */
+    /* Let the fixed wash show through — continuous with header gradient */
     background: transparent !important;
     margin-top: 0 !important;
     margin-left: 0 !important;
@@ -360,10 +371,14 @@ html[data-static-page="main"] {
   var MIN_TOP = 28;
   var WALLET_GAP = 8;
   var CHROME_FILL = "#d6e0ff";
+  var GRADIENT = "linear-gradient(135deg, #d6e0ff 0%, #f6e4f1 100%)";
+  var GRADIENT_HEIGHT = "360px";
   var chromeReady = false;
   var lastWidth = 0;
   var lastClearance = 0;
+  var lastHeaderH = 0;
   var resizeTimer = 0;
+  var observing = false;
 
   function measureSafeTop() {
     try {
@@ -391,9 +406,13 @@ html[data-static-page="main"] {
     header.style.setProperty("min-height", "0px", "important");
     header.style.setProperty("margin", "0px", "important");
     header.style.setProperty("padding", sat + "px 16px 8px", "important");
-    // Solid fill — avoids background-attachment:fixed flicker on scroll
-    header.style.setProperty("background", CHROME_FILL, "important");
-    header.style.setProperty("background-image", "none", "important");
+    // Same gradient geometry as body::before — seamless with the area below
+    header.style.setProperty("background-color", CHROME_FILL, "important");
+    header.style.setProperty("background-image", GRADIENT, "important");
+    header.style.setProperty("background-size", "100% " + GRADIENT_HEIGHT, "important");
+    header.style.setProperty("background-position", "center top", "important");
+    header.style.setProperty("background-repeat", "no-repeat", "important");
+    header.style.setProperty("background-attachment", "scroll", "important");
     header.style.setProperty("box-shadow", "none", "important");
     header.style.setProperty("-webkit-backdrop-filter", "none", "important");
     header.style.setProperty("backdrop-filter", "none", "important");
@@ -405,16 +424,25 @@ html[data-static-page="main"] {
   }
 
   function apply(force) {
+    var header = document.getElementById("scaffold-header-main");
+    // Head script can fire before body nodes exist
+    if (!header) return;
+
     var width = window.innerWidth || 0;
-    // Ignore address-bar show/hide (height-only resize) — it caused scroll flashes
-    if (!force && chromeReady && Math.abs(width - lastWidth) < 8) {
+    var headerH = Math.ceil(header.getBoundingClientRect().height || 0);
+    // Ignore address-bar show/hide, but remeasure when header height settles
+    if (
+      !force &&
+      chromeReady &&
+      Math.abs(width - lastWidth) < 8 &&
+      Math.abs(headerH - lastHeaderH) < 2
+    ) {
       return;
     }
 
     var sat = Math.max(measureSafeTop(), MIN_TOP);
-    var header = document.getElementById("scaffold-header-main");
     var row = document.getElementById("header-main-content");
-    var inner = header && header.querySelector(".scaffold__header-main");
+    var inner = header.querySelector(".scaffold__header-main");
 
     if (document.body) {
       document.body.style.setProperty("padding-top", "0px", "important");
@@ -425,19 +453,20 @@ html[data-static-page="main"] {
     }
 
     paintChrome(header, inner, sat);
+    // Force layout before measuring — first paint otherwise used pre-padding height
+    void header.offsetHeight;
 
-    var clearance = row
-      ? Math.ceil(row.getBoundingClientRect().bottom)
-      : header
-        ? Math.ceil(header.getBoundingClientRect().bottom)
-        : sat + 48;
-    if (header) {
-      clearance = Math.max(clearance, Math.ceil(header.getBoundingClientRect().bottom));
+    var clearance = Math.ceil(header.getBoundingClientRect().bottom);
+    if (row) {
+      clearance = Math.max(clearance, Math.ceil(row.getBoundingClientRect().bottom));
+    }
+    if (!clearance || clearance < sat + 36) {
+      clearance = sat + 48;
     }
 
-    // Avoid tiny clearance thrash from subpixel rounding
     if (!force && lastClearance && Math.abs(clearance - lastClearance) < 2) {
       lastWidth = width;
+      lastHeaderH = Math.ceil(header.getBoundingClientRect().height || 0);
       chromeReady = true;
       return;
     }
@@ -470,8 +499,37 @@ html[data-static-page="main"] {
 
     lastWidth = width;
     lastClearance = clearance;
+    lastHeaderH = Math.ceil(header.getBoundingClientRect().height || 0);
     chromeReady = true;
+    observeHeader(header);
   }
+
+  function observeHeader(header) {
+    if (observing || !header || typeof ResizeObserver !== "function") return;
+    observing = true;
+    var roTimer = 0;
+    var ro = new ResizeObserver(function () {
+      clearTimeout(roTimer);
+      roTimer = setTimeout(function () {
+        apply(true);
+      }, 50);
+    });
+    ro.observe(header);
+    var row = document.getElementById("header-main-content");
+    if (row) ro.observe(row);
+  }
+
+  function schedule() {
+    apply(true);
+    requestAnimationFrame(function () {
+      apply(true);
+      requestAnimationFrame(function () {
+        apply(true);
+      });
+    });
+  }
+
+  window.__pwaApplyHeaderOffset = schedule;
 
   function onResize() {
     clearTimeout(resizeTimer);
@@ -481,24 +539,20 @@ html[data-static-page="main"] {
   }
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", function () {
-      apply(true);
-    });
+    document.addEventListener("DOMContentLoaded", schedule);
   } else {
-    apply(true);
+    schedule();
   }
   window.addEventListener("resize", onResize);
   window.addEventListener("orientationchange", function () {
-    setTimeout(function () {
-      apply(true);
-    }, 300);
+    setTimeout(schedule, 300);
   });
-  setTimeout(function () {
-    apply(true);
-  }, 50);
-  setTimeout(function () {
-    apply(true);
-  }, 300);
+  window.addEventListener("pageshow", function () {
+    schedule();
+  });
+  setTimeout(schedule, 50);
+  setTimeout(schedule, 300);
+  setTimeout(schedule, 800);
 })();
 </script>
 <!-- static-header-offset-end -->
@@ -1643,6 +1697,10 @@ html.online-lock-open body {
   if (!force && sessionStorage.getItem(unlockedKey) === '1') {
     document.documentElement.classList.add('online-unlocked');
     screen.remove();
+    if (typeof window.__pwaApplyHeaderOffset === 'function') {
+      window.__pwaApplyHeaderOffset();
+      setTimeout(window.__pwaApplyHeaderOffset, 50);
+    }
     return;
   }
 
@@ -1675,14 +1733,25 @@ html.online-lock-open body {
     document.documentElement.classList.remove('online-lock-open');
     document.documentElement.classList.add('online-unlocked');
     document.removeEventListener('keydown', onKeydown);
+    if (typeof window.__pwaApplyHeaderOffset === 'function') {
+      window.__pwaApplyHeaderOffset();
+      setTimeout(window.__pwaApplyHeaderOffset, 50);
+      setTimeout(window.__pwaApplyHeaderOffset, 280);
+    }
     setTimeout(function () {
       document.documentElement.classList.add('online-main-enter-active');
     }, 150);
     setTimeout(function () {
       screen.remove();
+      if (typeof window.__pwaApplyHeaderOffset === 'function') {
+        window.__pwaApplyHeaderOffset();
+      }
     }, 240);
     setTimeout(function () {
       document.documentElement.classList.remove('online-main-entering', 'online-main-enter-active');
+      if (typeof window.__pwaApplyHeaderOffset === 'function') {
+        window.__pwaApplyHeaderOffset();
+      }
     }, 900);
   }
 
