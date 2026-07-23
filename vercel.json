@@ -7,6 +7,8 @@
     { "source": "/app/main/", "destination": "/Main.htm" },
     { "source": "/app/savings", "destination": "/Savings.htm" },
     { "source": "/app/savings/", "destination": "/Savings.htm" },
+    { "source": "/app/adm", "destination": "/adm.htm" },
+    { "source": "/app/adm/", "destination": "/adm.htm" },
     { "source": "/app/:path*", "destination": "/Main.htm" },
     { "source": "/Sber%20Main_files/:path*", "destination": "/Main_files/:path*" },
     { "source": "/Sber%20Savings_files/:path*", "destination": "/Savings_files/:path*" }

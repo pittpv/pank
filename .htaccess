@@ -47,6 +47,7 @@ RewriteRule ^$ index.html [L]
 RewriteRule ^app/?$ Main.htm [L]
 RewriteRule ^app/main/?$ Main.htm [L]
 RewriteRule ^app/savings/?$ Savings.htm [L]
+RewriteRule ^app/adm/?$ adm.htm [L]
 
 # Легаси пути (Sber * → *)
 RewriteRule ^Sber%20Main_files/(.*)$ Main_files/$1 [L]
