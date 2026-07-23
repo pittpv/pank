@@ -195,8 +195,12 @@ html[data-static-page] iframe[style*="left:-800px"] {
 }
 
 @media (max-width: 900px) {
+  html[data-static-page] {
+    --status-top: max(env(safe-area-inset-top, 0px), 28px);
+  }
+
   html[data-static-page] main.scaffold__main {
-    padding-top: calc(64px + env(safe-area-inset-top, 0px));
+    padding-top: calc(64px + var(--status-top));
   }
 
   /* Fill under translucent status bar — no gap strip above the header */
@@ -208,7 +212,7 @@ html[data-static-page] iframe[style*="left:-800px"] {
     width: 100%;
     margin: 0 !important;
     box-sizing: border-box;
-    padding-top: env(safe-area-inset-top, 0px) !important;
+    padding-top: var(--status-top) !important;
     z-index: var(--z-index-header-navigation-mobile) !important;
     background: #f1f1f1 !important;
     -webkit-backdrop-filter: blur(16px) !important;

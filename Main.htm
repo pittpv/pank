@@ -203,6 +203,8 @@ html[data-static-page] iframe[style*="left:-800px"] {
 html[data-static-page="main"] {
   --main-top-gradient: linear-gradient(135deg, #d6e0ff 0%, #f6e4f1 100%);
   --main-top-gradient-height: 360px;
+  /* Android often reports 0; keep search below status icons */
+  --status-top: max(env(safe-area-inset-top, 0px), 28px);
 }
 
 @media (max-width: 900px) {
@@ -214,8 +216,13 @@ html[data-static-page="main"] {
       #f1f1f1 !important;
   }
 
+  html[data-static-page] {
+    --status-top: max(env(safe-area-inset-top, 0px), 28px);
+  }
+
   html[data-static-page] main.scaffold__main {
-    padding-top: calc(64px + env(safe-area-inset-top, 0px));
+    /* Clear fixed header (row ~64px) + status inset once */
+    padding-top: calc(64px + var(--status-top));
   }
 
   html[data-static-page] #scaffold-header-main.scaffold__header {
@@ -226,7 +233,7 @@ html[data-static-page="main"] {
     width: 100%;
     margin: 0 !important;
     box-sizing: border-box;
-    padding-top: env(safe-area-inset-top, 0px) !important;
+    padding-top: var(--status-top) !important;
     z-index: var(--z-index-header-navigation-mobile) !important;
     background: rgba(241, 241, 241, 0.96) !important;
     -webkit-backdrop-filter: blur(16px) !important;
@@ -242,7 +249,8 @@ html[data-static-page="main"] {
 
   html[data-static-page="main"] #main .L6qMFkEL.LPFbIg6s {
     background: var(--main-top-gradient) center top / 100% var(--main-top-gradient-height) no-repeat !important;
-    padding-top: calc(64px + env(safe-area-inset-top, 0px)) !important;
+    /* Keep original internal offset — do not add status inset again */
+    padding-top: 72px !important;
   }
 
   html[data-static-page="main"].online-main-entering #main .uXANOpJ5 > :nth-child(n + 3) {
