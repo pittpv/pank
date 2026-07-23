@@ -249,11 +249,14 @@ html[data-static-page="main"] {
     left: 0;
     right: 0;
     height: var(--main-top-gradient-height);
-    background-color: var(--main-chrome-fill);
-    background-image: var(--main-top-gradient);
-    background-size: 100% var(--main-top-gradient-height);
-    background-position: center top;
-    background-repeat: no-repeat;
+    background-color: #f1f1f1;
+    /* Diagonal wash + soft fade into page gray at the bottom */
+    background-image:
+      linear-gradient(180deg, rgba(241, 241, 241, 0) 55%, #f1f1f1 100%),
+      var(--main-top-gradient);
+    background-size: 100% 100%, 100% var(--main-top-gradient-height);
+    background-position: center top, center top;
+    background-repeat: no-repeat, no-repeat;
     background-attachment: scroll;
     pointer-events: none;
     z-index: 0;
@@ -326,6 +329,15 @@ html[data-static-page="main"] {
     margin-left: 0 !important;
     margin-right: 0 !important;
     padding-top: 8px !important;
+  }
+
+  /* From «Переводы» onward — 8.5px inset from screen edges */
+  html[data-static-page="main"] #main .wifeRTkh {
+    margin-left: 8.5px !important;
+    margin-right: 8.5px !important;
+    width: auto !important;
+    max-width: calc(100% - 17px) !important;
+    box-sizing: border-box !important;
   }
 
   html[data-static-page="main"].online-main-entering #main .uXANOpJ5 > :nth-child(n + 3) {
