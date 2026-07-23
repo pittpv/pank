@@ -177,7 +177,7 @@
         <form id="adminForm">
             <div class="form-group">
                 <label for="walletBalance">Баланс кошелька (₽)</label>
-                <input type="text" id="walletBalance" placeholder="Например: 1 964,77" required>
+                <input type="text" id="walletBalance" inputmode="decimal" placeholder="Например: 1 964,77" required>
                 <div class="balance-preview">
                     <div class="preview-label">Предпросмотр:</div>
                     <div class="preview-value" id="walletPreview">1 964,77 ₽</div>
@@ -186,7 +186,7 @@
 
             <div class="form-group">
                 <label for="sberbonusBalance">Бонусы СберСпасибо</label>
-                <input type="text" id="sberbonusBalance" placeholder="Например: 111" required>
+                <input type="text" id="sberbonusBalance" inputmode="numeric" placeholder="Например: 111" required>
                 <div class="balance-preview">
                     <div class="preview-label">Предпросмотр:</div>
                     <div class="preview-value" id="sberbonusPreview">111</div>
@@ -225,15 +225,59 @@
         const successMessage = document.getElementById('successMessage');
         const btnReset = document.getElementById('btnReset');
 
+        // Форматирование сумм с пробелами между разрядами
+        function formatAmount(value, allowDecimals) {
+            const normalized = String(value ?? '')
+                .replace(/\s/g, '')
+                .replace(/\./g, ',')
+                .replace(allowDecimals ? /[^\d,]/g : /\D/g, '');
+            const commaIndex = allowDecimals ? normalized.indexOf(',') : -1;
+            const hasComma = commaIndex !== -1;
+            let integerPart = hasComma ? normalized.slice(0, commaIndex) : normalized;
+            const decimalPart = hasComma
+                ? normalized.slice(commaIndex + 1).replace(/\D/g, '').slice(0, 2)
+                : '';
+
+            integerPart = integerPart.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+            if (!integerPart && hasComma) integerPart = '0';
+
+            const grouped = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+            return grouped + (hasComma ? ',' + decimalPart : '');
+        }
+
+        function formatInput(input, allowDecimals) {
+            const caret = input.selectionStart ?? input.value.length;
+            const valueBeforeCaret = input.value.slice(0, caret);
+            const digitsBeforeCaret = valueBeforeCaret.replace(/\D/g, '').length;
+            const caretIsAfterComma = allowDecimals && /[,.]/.test(valueBeforeCaret);
+            const formatted = formatAmount(input.value, allowDecimals);
+
+            input.value = formatted;
+
+            let nextCaret = 0;
+            let digitsSeen = 0;
+            while (nextCaret < formatted.length && digitsSeen < digitsBeforeCaret) {
+                if (/\d/.test(formatted[nextCaret])) digitsSeen += 1;
+                nextCaret += 1;
+            }
+            if (caretIsAfterComma && formatted.includes(',')) {
+                nextCaret = Math.max(nextCaret, formatted.indexOf(',') + 1);
+            }
+            input.setSelectionRange(nextCaret, nextCaret);
+            return formatted;
+        }
+
         // Загрузка текущих значений с сервера
         async function loadValues() {
             try {
                 const response = await fetch(API_URL, { method: 'GET' });
                 if (response.ok) {
                     const data = await response.json();
-                    walletInput.value = data.wallet || DEFAULT_WALLET;
-                    sberbonusInput.value = data.sberbonus || DEFAULT_SBERBONUS;
-                    updatePreviews(data.wallet || DEFAULT_WALLET, data.sberbonus || DEFAULT_SBERBONUS);
+                    const wallet = formatAmount(data.wallet || DEFAULT_WALLET, true);
+                    const sberbonus = formatAmount(data.sberbonus || DEFAULT_SBERBONUS, false);
+                    walletInput.value = wallet;
+                    sberbonusInput.value = sberbonus;
+                    updatePreviews(wallet, sberbonus);
                     return;
                 }
             } catch (e) {
@@ -241,8 +285,8 @@
             }
 
             // Fallback на localStorage если сервер недоступен
-            const wallet = localStorage.getItem(WALLET_KEY) || DEFAULT_WALLET;
-            const sberbonus = localStorage.getItem(SBERBONUS_KEY) || DEFAULT_SBERBONUS;
+            const wallet = formatAmount(localStorage.getItem(WALLET_KEY) || DEFAULT_WALLET, true);
+            const sberbonus = formatAmount(localStorage.getItem(SBERBONUS_KEY) || DEFAULT_SBERBONUS, false);
             walletInput.value = wallet;
             sberbonusInput.value = sberbonus;
             updatePreviews(wallet, sberbonus);
@@ -286,8 +330,8 @@
         adminForm.addEventListener('submit', async function(e) {
             e.preventDefault();
 
-            const wallet = walletInput.value.trim();
-            const sberbonus = sberbonusInput.value.trim();
+            const wallet = formatAmount(walletInput.value, true);
+            const sberbonus = formatAmount(sberbonusInput.value, false);
 
             if (!wallet || !sberbonus) {
                 alert('Пожалуйста, заполните все поля');
@@ -320,12 +364,12 @@
 
         // Обновление предпросмотра в реальном времени
         walletInput.addEventListener('input', function() {
-            const value = this.value.trim() || DEFAULT_WALLET;
+            const value = formatInput(this, true) || DEFAULT_WALLET;
             walletPreview.textContent = value + ' ₽';
         });
 
         sberbonusInput.addEventListener('input', function() {
-            const value = this.value.trim() || DEFAULT_SBERBONUS;
+            const value = formatInput(this, false) || DEFAULT_SBERBONUS;
             sberbonusPreview.textContent = value;
         });
 
