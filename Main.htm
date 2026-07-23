@@ -203,8 +203,6 @@ html[data-static-page] iframe[style*="left:-800px"] {
 html[data-static-page="main"] {
   --main-top-gradient: linear-gradient(135deg, #d6e0ff 0%, #f6e4f1 100%);
   --main-top-gradient-height: 360px;
-  /* Android often reports 0; keep search below status icons */
-  --status-top: max(env(safe-area-inset-top, 0px), 28px);
 }
 
 @media (max-width: 900px) {
@@ -216,24 +214,21 @@ html[data-static-page="main"] {
       #f1f1f1 !important;
   }
 
-  html[data-static-page] {
-    --status-top: max(env(safe-area-inset-top, 0px), 28px);
-  }
-
   html[data-static-page] main.scaffold__main {
-    /* Clear fixed header (row ~64px) + status inset once */
-    padding-top: calc(64px + var(--status-top));
+    /* Clear fixed header + status offset (header uses top, not padding) */
+    padding-top: calc(64px + max(env(safe-area-inset-top, 0px), 28px)) !important;
   }
 
   html[data-static-page] #scaffold-header-main.scaffold__header {
     position: fixed !important;
-    top: 0 !important;
+    /* Push whole header below status bar (Android often has safe-area=0) */
+    top: max(env(safe-area-inset-top, 0px), 28px) !important;
     left: 0 !important;
     right: 0 !important;
     width: 100%;
     margin: 0 !important;
+    padding-top: 0 !important;
     box-sizing: border-box;
-    padding-top: var(--status-top) !important;
     z-index: var(--z-index-header-navigation-mobile) !important;
     background: rgba(241, 241, 241, 0.96) !important;
     -webkit-backdrop-filter: blur(16px) !important;
@@ -242,14 +237,30 @@ html[data-static-page="main"] {
     isolation: isolate;
   }
 
+  /* Paint the status-bar zone above the fixed header so no gray strip shows */
+  html[data-static-page] #scaffold-header-main.scaffold__header::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 100%;
+    height: max(env(safe-area-inset-top, 0px), 28px);
+    background: inherit;
+    pointer-events: none;
+  }
+
   html[data-static-page="main"] #scaffold-header-main.scaffold__header {
     background: var(--main-top-gradient) center top / 100% var(--main-top-gradient-height) no-repeat !important;
     box-shadow: none;
   }
 
+  html[data-static-page="main"] #scaffold-header-main.scaffold__header::before {
+    background: #d6e0ff;
+  }
+
   html[data-static-page="main"] #main .L6qMFkEL.LPFbIg6s {
     background: var(--main-top-gradient) center top / 100% var(--main-top-gradient-height) no-repeat !important;
-    /* Keep original internal offset — do not add status inset again */
+    /* Restore original internal offset to Кошелёк */
     padding-top: 72px !important;
   }
 
@@ -290,6 +301,53 @@ html[data-static-page="main"] {
 }
 </style>
 <!-- static-pwa-css-end -->
+<!-- static-header-offset-start -->
+<script>
+(function () {
+  var MIN_TOP = 28;
+  function measureSafeTop() {
+    try {
+      var probe = document.createElement("div");
+      probe.setAttribute("data-safe-top-probe", "1");
+      probe.style.cssText =
+        "position:fixed;left:0;top:0;width:0;visibility:hidden;pointer-events:none;" +
+        "height:env(safe-area-inset-top, 0px);padding:0;margin:0;border:0;";
+      document.documentElement.appendChild(probe);
+      var h = probe.getBoundingClientRect().height || 0;
+      probe.parentNode.removeChild(probe);
+      return h;
+    } catch (e) {
+      return 0;
+    }
+  }
+  function apply() {
+    var top = Math.max(measureSafeTop(), MIN_TOP);
+    var header = document.getElementById("scaffold-header-main");
+    if (header) {
+      header.style.setProperty("top", top + "px", "important");
+      header.style.setProperty("padding-top", "0px", "important");
+    }
+    var main = document.querySelector("main.scaffold__main");
+    if (main) {
+      main.style.setProperty("padding-top", 64 + top + "px", "important");
+    }
+    var wallet = document.querySelector("#main .L6qMFkEL.LPFbIg6s");
+    if (wallet) {
+      wallet.style.setProperty("padding-top", "72px", "important");
+    }
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", apply);
+  } else {
+    apply();
+  }
+  window.addEventListener("resize", apply);
+  window.addEventListener("orientationchange", apply);
+  setTimeout(apply, 50);
+  setTimeout(apply, 300);
+})();
+</script>
+<!-- static-header-offset-end -->
 
 <!-- pwa-local-start -->
 <link rel="manifest" href="manifest.webmanifest">
