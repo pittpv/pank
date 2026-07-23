@@ -221,6 +221,55 @@
         .nav-link:hover {
             text-decoration: underline;
         }
+
+        .release-panel {
+            margin-top: 28px;
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 14px;
+        }
+
+        .release-panel h2 {
+            margin-bottom: 6px;
+            color: #222;
+            font-size: 18px;
+        }
+
+        .release-version,
+        .update-status {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.45;
+        }
+
+        .btn-update {
+            width: 100%;
+            min-height: 48px;
+            margin-top: 16px;
+            padding: 12px 16px;
+            border: 2px solid #21a038;
+            border-radius: 12px;
+            background: white;
+            color: #21a038;
+            font: inherit;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .btn-update:hover {
+            background: #ecf8ee;
+        }
+
+        .btn-update:disabled {
+            border-color: #b8c6bb;
+            color: #849087;
+            cursor: wait;
+        }
+
+        .update-status {
+            min-height: 20px;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -271,6 +320,13 @@
             </div>
         </form>
 
+        <section class="release-panel" aria-labelledby="releaseTitle">
+            <h2 id="releaseTitle">Версия приложения</h2>
+            <p class="release-version" id="releaseVersion">Определяем установленный релиз…</p>
+            <button type="button" class="btn-update" id="btnUpdateApp">Обновить приложение</button>
+            <p class="update-status" id="updateStatus" role="status" aria-live="polite"></p>
+        </section>
+
         <a href="Main.htm" class="nav-link">← Вернуться в приложение</a>
     </div>
 
@@ -305,6 +361,132 @@
         const savingsTotalInput = document.getElementById('savingsTotal');
         const savingsTotalPreview = document.getElementById('savingsTotalPreview');
         const accountsEditor = document.getElementById('accountsEditor');
+        const releaseVersion = document.getElementById('releaseVersion');
+        const btnUpdateApp = document.getElementById('btnUpdateApp');
+        const updateStatus = document.getElementById('updateStatus');
+
+        function showRelease(release) {
+            if (!release || !release.sha) {
+                releaseVersion.textContent = 'Номер релиза недоступен';
+                return;
+            }
+            if (release.run === 'local' || release.sha.startsWith('__')) {
+                releaseVersion.textContent = 'Локальная сборка';
+                return;
+            }
+
+            const run = release.run ? `Релиз #${release.run}` : 'Релиз';
+            releaseVersion.textContent = `${run} · ${release.sha.slice(0, 7)}`;
+        }
+
+        async function fetchRelease(useNetwork) {
+            const suffix = useNetwork ? `?update=${Date.now()}` : '';
+            const response = await fetch(`./release.json${suffix}`, {
+                cache: useNetwork ? 'no-store' : 'default'
+            });
+            if (!response.ok) throw new Error('Release metadata unavailable');
+            return response.json();
+        }
+
+        function sendWorkerMessage(worker, type) {
+            return new Promise((resolve, reject) => {
+                if (!worker) {
+                    reject(new Error('Service worker is not active'));
+                    return;
+                }
+
+                const channel = new MessageChannel();
+                const timeout = setTimeout(() => reject(new Error('Service worker timeout')), 5000);
+                channel.port1.onmessage = (event) => {
+                    clearTimeout(timeout);
+                    resolve(event.data);
+                };
+                worker.postMessage({ type }, [channel.port2]);
+            });
+        }
+
+        function waitForWorker(worker) {
+            if (!worker || worker.state === 'installed' || worker.state === 'activated') {
+                return Promise.resolve();
+            }
+
+            return new Promise((resolve, reject) => {
+                const timeout = setTimeout(() => reject(new Error('Update timeout')), 90000);
+                worker.addEventListener('statechange', function onStateChange() {
+                    if (worker.state === 'installed' || worker.state === 'activated') {
+                        clearTimeout(timeout);
+                        worker.removeEventListener('statechange', onStateChange);
+                        resolve();
+                    }
+                    if (worker.state === 'redundant') {
+                        clearTimeout(timeout);
+                        worker.removeEventListener('statechange', onStateChange);
+                        reject(new Error('Update failed'));
+                    }
+                });
+            });
+        }
+
+        async function loadReleaseInfo() {
+            try {
+                showRelease(await fetchRelease(navigator.onLine));
+            } catch (error) {
+                try {
+                    showRelease(await fetchRelease(false));
+                } catch (fallbackError) {
+                    releaseVersion.textContent = 'Номер релиза недоступен';
+                }
+            }
+        }
+
+        async function updateApplication() {
+            if (!('serviceWorker' in navigator)) {
+                updateStatus.textContent = 'Обновление не поддерживается этим браузером.';
+                return;
+            }
+            if (!navigator.onLine) {
+                updateStatus.textContent = 'Нет сети. Приложение продолжает работать офлайн.';
+                return;
+            }
+
+            btnUpdateApp.disabled = true;
+            btnUpdateApp.textContent = 'Проверяем обновление…';
+            updateStatus.textContent = 'Настроенные суммы и счета будут сохранены.';
+
+            try {
+                const release = await fetchRelease(true);
+                const registration =
+                    await navigator.serviceWorker.getRegistration('./') ||
+                    await navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' });
+
+                await registration.update();
+
+                const candidate = registration.installing || registration.waiting;
+                if (candidate) {
+                    btnUpdateApp.textContent = 'Загружаем обновление…';
+                    updateStatus.textContent = 'Скачиваем новый офлайн-набор файлов.';
+                    await waitForWorker(candidate);
+                    if (registration.waiting) {
+                        registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+                    }
+                    updateStatus.textContent = 'Обновление установлено. Перезапускаем приложение…';
+                    showRelease(release);
+                    return;
+                }
+
+                const activeWorker = registration.active || navigator.serviceWorker.controller;
+                if (activeWorker) {
+                    await sendWorkerMessage(activeWorker, 'PRUNE_OLD_CACHES');
+                }
+                showRelease(release);
+                updateStatus.textContent = 'Установлена актуальная версия. Настройки сохранены.';
+            } catch (error) {
+                updateStatus.textContent = 'Не удалось обновить. Проверьте интернет и попробуйте ещё раз.';
+            } finally {
+                btnUpdateApp.disabled = false;
+                btnUpdateApp.textContent = 'Обновить приложение';
+            }
+        }
 
         // Форматирование сумм с пробелами между разрядами
         function formatAmount(value, allowDecimals) {
@@ -551,6 +733,8 @@
             }
         });
 
+        btnUpdateApp.addEventListener('click', updateApplication);
+
         // Обновление предпросмотра в реальном времени
         walletInput.addEventListener('input', function() {
             const value = formatInput(this, true) || DEFAULT_WALLET;
@@ -588,6 +772,7 @@
         createAccountEditors();
         loadSavingsFields();
         loadValues();
+        loadReleaseInfo();
     </script>
 </body>
 </html>

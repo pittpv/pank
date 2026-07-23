@@ -1,6 +1,7 @@
 ```gitignore
 # JSON data files
 *.json
+!release.json
 
 # Build artifacts
 dist/
