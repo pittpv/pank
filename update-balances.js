@@ -1,4 +1,4 @@
-// Скрипт для обновления балансов с сервера Vercel
+// Скрипт для обновления балансов с сервера
 (function() {
     const API_URL = '/api/balances';
     const WALLET_KEY = 'pwa_wallet_balance';
