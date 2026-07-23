@@ -10,7 +10,7 @@
       "#joke-app-banner{" +
       "position:relative;" +
       "display:flex;align-items:center;justify-content:center;gap:10px;" +
-      "box-sizing:border-box;width:100%;min-height:64px;margin-top:32px;padding:16px;" +
+      "box-sizing:border-box;width:100%;margin-top:32px;padding:12px 16px;" +
       "background:#c1121f;color:#fff;" +
       "font:700 15px/1.35 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;" +
       "letter-spacing:.01em;text-align:center;" +
@@ -21,13 +21,13 @@
       "#joke-app-banner strong{font-weight:800}" +
       "@media(max-width:1199px){" +
       "#joke-app-banner.joke-app-banner--with-nav{" +
-      "padding-bottom:calc(80px + env(safe-area-inset-bottom, 0px))" +
+      "margin-bottom:calc(64px + env(safe-area-inset-bottom, 0px))" +
       "}" +
       "}" +
       "@media(max-width:520px){" +
-      "#joke-app-banner{gap:7px;min-height:56px;margin-top:24px;padding:14px 10px;font-size:12px}" +
+      "#joke-app-banner{gap:7px;margin-top:24px;padding:10px;font-size:12px}" +
       "#joke-app-banner.joke-app-banner--with-nav{" +
-      "padding-bottom:calc(78px + env(safe-area-inset-bottom, 0px))" +
+      "margin-bottom:calc(62px + env(safe-area-inset-bottom, 0px))" +
       "}" +
       "#joke-app-banner .joke-app-banner__mark{font-size:17px}" +
       "}";
