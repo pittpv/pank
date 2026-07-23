@@ -267,9 +267,9 @@ html[data-static-page] iframe[style*="left:-800px"] {
   html[data-static-page="savings"] #main .Xx5wekhe > .cCwwo7Ea {
     margin: 8px 0 16px !important;
     padding-top: 0 !important;
-    /* Match Main «Кошелёк» (ytAP41jd idt-4xl = 16px): container already has 8.5px */
+    /* Match Main «Кошелёк» / hide-balances (ytAP41jd idt-4xl = 16px): container already has 8.5px */
     padding-left: 7.5px !important;
-    padding-right: 0 !important;
+    padding-right: 7.5px !important;
   }
 
   /* All Savings content cards — keep 8.5px from screen edge */
@@ -356,7 +356,7 @@ html[data-static-page] iframe[style*="left:-800px"] {
       title.style.setProperty("margin", "8px 0 16px", "important");
       title.style.setProperty("padding-top", "0px", "important");
       title.style.setProperty("padding-left", "7.5px", "important");
-      title.style.setProperty("padding-right", "0px", "important");
+      title.style.setProperty("padding-right", "7.5px", "important");
     }
 
     ["scaffold-notifications", "app-bar-headers"].forEach(function (id) {
