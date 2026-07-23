@@ -14,11 +14,37 @@
       document.documentElement.setAttribute('data-static-page', 'savings');
     } else {
       document.documentElement.setAttribute('data-static-page', 'main');
+      // Paint under iOS/Android status bar before first paint
+      document.documentElement.style.backgroundColor = '#d6e0ff';
     }
   } catch (e) {}
 })();
 </script>
 <!-- static-pwa-guard-end -->
+<!-- static-theme-color-start -->
+<script>
+(function () {
+  var COLOR = '#d6e0ff';
+  function applyThemeColor() {
+    var nodes = document.querySelectorAll('meta[name="theme-color"]');
+    if (!nodes.length) {
+      var meta = document.createElement('meta');
+      meta.setAttribute('name', 'theme-color');
+      meta.setAttribute('content', COLOR);
+      document.head.appendChild(meta);
+      return;
+    }
+    for (var i = 0; i < nodes.length; i++) {
+      nodes[i].setAttribute('content', COLOR);
+    }
+  }
+  applyThemeColor();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', applyThemeColor);
+  }
+})();
+</script>
+<!-- static-theme-color-end -->
 <!-- static-avatar-fix-start -->
 <script>
 (function () {
@@ -131,9 +157,15 @@ html[data-static-page] #assistant-region {
 }
 
 /* Keep the installed PWA canvas neutral, including the iOS safe area. */
-html[data-static-page],
-html[data-static-page] body {
+html[data-static-page]:not([data-static-page="main"]),
+html[data-static-page]:not([data-static-page="main"]) body {
   background: #f1f1f1 !important;
+}
+
+/* Main: solid top color so translucent status bar shows lavender, not gray */
+html[data-static-page="main"],
+html[data-static-page="main"] body {
+  background-color: #d6e0ff !important;
 }
 
 /* Keep in-page carousels swipeable */
@@ -168,17 +200,17 @@ html[data-static-page] iframe[style*="left:-800px"] {
   }
 }
 
-@media (max-width: 480px) {
-  html[data-static-page="main"] {
-    --main-top-gradient: linear-gradient(135deg, #d6e0ff 0%, #f6e4f1 100%);
-    --main-top-gradient-height: 360px;
-  }
+html[data-static-page="main"] {
+  --main-top-gradient: linear-gradient(135deg, #d6e0ff 0%, #f6e4f1 100%);
+  --main-top-gradient-height: 360px;
+}
 
-  /* Paint status/safe-area the same lavender as the header below */
+@media (max-width: 900px) {
+  /* Continuously paint lavender under the translucent system status bar */
   html[data-static-page="main"],
   html[data-static-page="main"] body {
     background:
-      var(--main-top-gradient) center top / 100vw var(--main-top-gradient-height) no-repeat,
+      var(--main-top-gradient) center top / 100% var(--main-top-gradient-height) no-repeat,
       #f1f1f1 !important;
   }
 
@@ -204,14 +236,15 @@ html[data-static-page] iframe[style*="left:-800px"] {
 
   html[data-static-page="main"] #scaffold-header-main.scaffold__header {
     top: 0 !important;
-    padding-top: env(safe-area-inset-top) !important;
-    background: var(--main-top-gradient) center top / 100vw var(--main-top-gradient-height) no-repeat !important;
+    padding-top: max(env(safe-area-inset-top), 20px) !important;
+    min-height: calc(56px + max(env(safe-area-inset-top), 20px));
+    background: var(--main-top-gradient) center top / 100% var(--main-top-gradient-height) no-repeat !important;
     box-shadow: none;
   }
 
   html[data-static-page="main"] #main .L6qMFkEL.LPFbIg6s {
-    background: var(--main-top-gradient) center top / 100vw var(--main-top-gradient-height) no-repeat !important;
-    padding-top: calc(72px + env(safe-area-inset-top)) !important;
+    background: var(--main-top-gradient) center top / 100% var(--main-top-gradient-height) no-repeat !important;
+    padding-top: calc(72px + max(env(safe-area-inset-top), 20px)) !important;
   }
 
   html[data-static-page="main"].online-main-entering #main .uXANOpJ5 > :nth-child(n + 3) {
@@ -241,7 +274,7 @@ html[data-static-page] iframe[style*="left:-800px"] {
   }
 }
 
-@media (max-width: 480px) and (prefers-reduced-motion: reduce) {
+@media (max-width: 900px) and (prefers-reduced-motion: reduce) {
   html[data-static-page="main"].online-main-entering #main .uXANOpJ5 > :nth-child(n + 3),
   html[data-static-page="main"].online-main-entering .scaffold__aside-left .scaffold__nav {
     opacity: 1 !important;
@@ -257,7 +290,7 @@ html[data-static-page] iframe[style*="left:-800px"] {
 <meta name="theme-color" content="#d6e0ff">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Онлайн">
 <link rel="apple-touch-icon" href="pwa-icons/icon-180.png">
 <link rel="icon" type="image/png" sizes="32x32" href="pwa-icons/favicon-32.png">
