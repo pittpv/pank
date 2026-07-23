@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "СберБанк Онлайн",
-  "short_name": "Сбер",
-  "description": "Локальная копия СберБанк Онлайн (Главный и Накопления)",
+  "name": "Онлайн",
+  "short_name": "Онлайн",
+  "description": "Шуточное приложение «Онлайн»",
   "start_url": "./Main.htm",
   "scope": "./",
   "display": "standalone",

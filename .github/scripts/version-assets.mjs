@@ -9,7 +9,7 @@ if (!root || !/^[a-zA-Z0-9._-]+$/.test(version)) {
 }
 
 const assetReference =
-  /\b(src|href)=(["'])(?!https?:|\/\/|data:|blob:)([^"'?#]+?\.(?:css|js))(?:\?[^"'#]*)?(#[^"']*)?\2/gi;
+  /\b(src|href)=(["'])(?!https?:|\/\/|data:|blob:)([^"'?#]+?\.(?:css|js|webmanifest))(?:\?[^"'#]*)?(#[^"']*)?\2/gi;
 
 let changedFiles = 0;
 let changedReferences = 0;
@@ -47,5 +47,5 @@ async function walk(directory) {
 
 await walk(root);
 console.log(
-  `Versioned ${changedReferences} CSS/JS references in ${changedFiles} HTML files`
+  `Versioned ${changedReferences} static asset references in ${changedFiles} HTML files`
 );
