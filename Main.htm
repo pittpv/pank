@@ -20,6 +20,25 @@
 })();
 </script>
 <!-- static-pwa-guard-end -->
+<!-- static-lock-gate-start -->
+<style id="static-lock-gate-css">
+/* Hide Main chrome until welcome lock resolves — prevents flash while HTML streams */
+html[data-static-page="main"]:not(.online-unlocked) .scaffold__section,
+html[data-static-page="main"]:not(.online-unlocked) #assistant-region {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+</style>
+<script>
+(function () {
+  try {
+    if (sessionStorage.getItem("onlineAppUnlocked_v1") === "1") {
+      document.documentElement.classList.add("online-unlocked");
+    }
+  } catch (e) {}
+})();
+</script>
+<!-- static-lock-gate-end -->
 <!-- static-theme-color-start -->
 <script>
 (function () {
@@ -1492,6 +1511,7 @@ html.online-lock-open body {
   }, true);
 
   if (!force && sessionStorage.getItem(unlockedKey) === '1') {
+    document.documentElement.classList.add('online-unlocked');
     screen.remove();
     return;
   }
@@ -1506,6 +1526,7 @@ html.online-lock-open body {
   if (nameNode) nameNode.textContent = name;
   document.documentElement.classList.add('online-lock-open');
   document.documentElement.classList.add('online-main-entering');
+  document.documentElement.classList.remove('online-unlocked');
 
   function render() {
     dots.forEach(function (dot, index) {
@@ -1522,6 +1543,7 @@ html.online-lock-open body {
     sessionStorage.setItem(unlockedKey, '1');
     screen.classList.add('is-unlocking');
     document.documentElement.classList.remove('online-lock-open');
+    document.documentElement.classList.add('online-unlocked');
     document.removeEventListener('keydown', onKeydown);
     setTimeout(function () {
       document.documentElement.classList.add('online-main-enter-active');

@@ -226,8 +226,15 @@ html[data-static-page] iframe[style*="left:-800px"] {
     display: none !important;
   }
 
-  html[data-static-page="savings"] #main .cCwwo7Ea {
+  html[data-static-page="savings"] #main .Xx5wekhe {
     margin-top: 0 !important;
+    padding-top: 0 !important;
+  }
+
+  html[data-static-page="savings"] #main .cCwwo7Ea {
+    /* Captured CSS uses margin:28px 0 20px — that was the oversized title gap */
+    margin: 8px 0 20px !important;
+    padding-top: 0 !important;
   }
 }
 </style>
@@ -255,6 +262,7 @@ html[data-static-page] iframe[style*="left:-800px"] {
   function apply() {
     var top = Math.max(measureSafeTop(), MIN_TOP);
     var header = document.getElementById("scaffold-header-main");
+    var row = document.getElementById("header-main-content") || header;
     if (header) {
       header.style.setProperty("top", top + "px", "important");
       header.style.setProperty("padding-top", "0px", "important");
@@ -263,12 +271,17 @@ html[data-static-page] iframe[style*="left:-800px"] {
       header.style.setProperty("-webkit-backdrop-filter", "none", "important");
       header.style.setProperty("backdrop-filter", "none", "important");
     }
-    var headerBottom = header
-      ? Math.ceil(header.getBoundingClientRect().bottom)
+    var headerBottom = row
+      ? Math.ceil(row.getBoundingClientRect().bottom)
       : top + 56;
     var main = document.querySelector("main.scaffold__main");
     if (main) {
       main.style.setProperty("padding-top", headerBottom + "px", "important");
+    }
+    var title = document.querySelector("#main .cCwwo7Ea");
+    if (title) {
+      title.style.setProperty("margin-top", "8px", "important");
+      title.style.setProperty("padding-top", "0px", "important");
     }
   }
 
