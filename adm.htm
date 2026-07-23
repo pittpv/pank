@@ -19,7 +19,7 @@
             min-height: 100vh;
             display: flex;
             justify-content: center;
-            align-items: center;
+            align-items: flex-start;
             padding: 20px;
         }
 
@@ -28,7 +28,7 @@
             border-radius: 20px;
             padding: 40px;
             width: 100%;
-            max-width: 500px;
+            max-width: 760px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
         }
 
@@ -48,6 +48,59 @@
 
         .form-group {
             margin-bottom: 25px;
+        }
+
+        .admin-section {
+            margin: 36px 0 28px;
+            padding-top: 28px;
+            border-top: 2px solid #eeeeee;
+        }
+
+        .admin-section h2 {
+            margin-bottom: 8px;
+            color: #222;
+            font-size: 22px;
+        }
+
+        .section-hint {
+            margin-bottom: 22px;
+            color: #666;
+            font-size: 14px;
+            line-height: 1.45;
+        }
+
+        .account-editor {
+            margin-top: 18px;
+            padding: 20px;
+            border: 2px solid #e8e8e8;
+            border-radius: 14px;
+        }
+
+        .account-editor legend {
+            padding: 0 8px;
+            color: #21a038;
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .account-fields {
+            display: grid;
+            grid-template-columns: minmax(0, 2fr) minmax(120px, 1fr);
+            gap: 16px;
+        }
+
+        .account-fields .form-group {
+            margin-bottom: 0;
+        }
+
+        @media (max-width: 620px) {
+            .admin-container {
+                padding: 28px 20px;
+            }
+
+            .account-fields {
+                grid-template-columns: 1fr;
+            }
         }
 
         label {
@@ -172,7 +225,7 @@
 <body>
     <div class="admin-container">
         <h1>⚙️ Админ-панель</h1>
-        <p class="subtitle">Управление значениями на главной странице</p>
+        <p class="subtitle">Управление значениями на экранах приложения</p>
 
         <form id="adminForm">
             <div class="form-group">
@@ -193,6 +246,22 @@
                 </div>
             </div>
 
+            <section class="admin-section" aria-labelledby="savingsSettingsTitle">
+                <h2 id="savingsSettingsTitle">Накопления</h2>
+                <p class="section-hint">Настройки экрана «Накопления». Все суммы форматируются автоматически.</p>
+
+                <div class="form-group">
+                    <label for="savingsTotal">Всего средств (₽)</label>
+                    <input type="text" id="savingsTotal" inputmode="decimal" placeholder="Например: 180 500,22" required>
+                    <div class="balance-preview">
+                        <div class="preview-label">Предпросмотр:</div>
+                        <div class="preview-value" id="savingsTotalPreview">180 500,22 ₽</div>
+                    </div>
+                </div>
+
+                <div id="accountsEditor"></div>
+            </section>
+
             <button type="submit" class="btn-save">💾 Сохранить изменения</button>
             <button type="button" class="btn-reset" id="btnReset">🔄 Сбросить к исходным</button>
 
@@ -211,10 +280,18 @@
         // Ключи для localStorage (резервное хранение)
         const WALLET_KEY = 'pwa_wallet_balance';
         const SBERBONUS_KEY = 'pwa_sberbonus_balance';
+        const SAVINGS_TOTAL_KEY = 'pwa_savings_total';
+        const SAVINGS_ACCOUNTS_KEY = 'pwa_savings_accounts';
 
         // Исходные значения
         const DEFAULT_WALLET = '1 964,77';
         const DEFAULT_SBERBONUS = '111';
+        const DEFAULT_SAVINGS_TOTAL = '16 964,99';
+        const DEFAULT_SAVINGS_ACCOUNTS = [
+            { name: 'Сберегательный счет', number: '2838', amount: '15 000,22', rate: '0,01' },
+            { name: 'Вклад «Лучший %»', number: '4812', amount: '120 000,00', rate: '14,5' },
+            { name: 'Накопительный счет', number: '9074', amount: '45 500,00', rate: '12' }
+        ];
 
         // Элементы формы
         const walletInput = document.getElementById('walletBalance');
@@ -224,6 +301,9 @@
         const adminForm = document.getElementById('adminForm');
         const successMessage = document.getElementById('successMessage');
         const btnReset = document.getElementById('btnReset');
+        const savingsTotalInput = document.getElementById('savingsTotal');
+        const savingsTotalPreview = document.getElementById('savingsTotalPreview');
+        const accountsEditor = document.getElementById('accountsEditor');
 
         // Форматирование сумм с пробелами между разрядами
         function formatAmount(value, allowDecimals) {
@@ -265,6 +345,104 @@
             }
             input.setSelectionRange(nextCaret, nextCaret);
             return formatted;
+        }
+
+        function formatRate(value) {
+            const normalized = String(value ?? '')
+                .replace(/\./g, ',')
+                .replace(/[^\d,]/g, '');
+            const commaIndex = normalized.indexOf(',');
+            if (commaIndex === -1) return normalized.slice(0, 3);
+            const integerPart = normalized.slice(0, commaIndex).slice(0, 3);
+            const decimalPart = normalized.slice(commaIndex + 1).replace(/\D/g, '').slice(0, 2);
+            return integerPart + ',' + decimalPart;
+        }
+
+        function createAccountEditors() {
+            DEFAULT_SAVINGS_ACCOUNTS.forEach((account, index) => {
+                const number = index + 1;
+                const fieldset = document.createElement('fieldset');
+                fieldset.className = 'account-editor';
+                fieldset.innerHTML = `
+                    <legend>Вклад или счёт ${number}</legend>
+                    <div class="account-fields">
+                        <div class="form-group">
+                            <label for="accountName${number}">Название</label>
+                            <input type="text" id="accountName${number}" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="accountNumber${number}">Номер</label>
+                            <input type="text" id="accountNumber${number}" inputmode="numeric" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="accountAmount${number}">Сумма (₽)</label>
+                            <input type="text" id="accountAmount${number}" inputmode="decimal" data-account-amount required>
+                        </div>
+                        <div class="form-group">
+                            <label for="accountRate${number}">Ставка (%)</label>
+                            <input type="text" id="accountRate${number}" inputmode="decimal" data-account-rate required>
+                        </div>
+                    </div>
+                `;
+                accountsEditor.appendChild(fieldset);
+            });
+        }
+
+        function readSavingsAccounts() {
+            try {
+                const saved = JSON.parse(localStorage.getItem(SAVINGS_ACCOUNTS_KEY));
+                if (Array.isArray(saved) && saved.length === 3) return saved;
+            } catch (e) {
+                console.log('Не удалось прочитать настройки счетов', e);
+            }
+            return DEFAULT_SAVINGS_ACCOUNTS;
+        }
+
+        function getAccountFields(index) {
+            const number = index + 1;
+            return {
+                name: document.getElementById(`accountName${number}`),
+                number: document.getElementById(`accountNumber${number}`),
+                amount: document.getElementById(`accountAmount${number}`),
+                rate: document.getElementById(`accountRate${number}`)
+            };
+        }
+
+        function loadSavingsFields() {
+            const total = formatAmount(localStorage.getItem(SAVINGS_TOTAL_KEY) || DEFAULT_SAVINGS_TOTAL, true);
+            const accounts = readSavingsAccounts();
+
+            savingsTotalInput.value = total;
+            savingsTotalPreview.textContent = total + ' ₽';
+
+            accounts.forEach((account, index) => {
+                const fields = getAccountFields(index);
+                fields.name.value = account.name;
+                fields.number.value = account.number;
+                fields.amount.value = formatAmount(account.amount, true);
+                fields.rate.value = formatRate(account.rate);
+            });
+        }
+
+        function collectSavingsAccounts() {
+            return DEFAULT_SAVINGS_ACCOUNTS.map((unused, index) => {
+                const fields = getAccountFields(index);
+                return {
+                    name: fields.name.value.trim(),
+                    number: fields.number.value.trim(),
+                    amount: formatAmount(fields.amount.value, true),
+                    rate: formatRate(fields.rate.value)
+                };
+            });
+        }
+
+        function saveSavingsFields() {
+            const total = formatAmount(savingsTotalInput.value, true);
+            const accounts = collectSavingsAccounts();
+            localStorage.setItem(SAVINGS_TOTAL_KEY, total);
+            localStorage.setItem(SAVINGS_ACCOUNTS_KEY, JSON.stringify(accounts));
+            window.dispatchEvent(new Event('savings-config-updated'));
+            return { total, accounts };
         }
 
         // Загрузка текущих значений с сервера
@@ -332,13 +510,19 @@
 
             const wallet = formatAmount(walletInput.value, true);
             const sberbonus = formatAmount(sberbonusInput.value, false);
+            const savingsTotal = formatAmount(savingsTotalInput.value, true);
+            const savingsAccounts = collectSavingsAccounts();
 
-            if (!wallet || !sberbonus) {
+            if (!wallet || !sberbonus || !savingsTotal ||
+                savingsAccounts.some(account =>
+                    !account.name || !account.number || !account.amount || !account.rate
+                )) {
                 alert('Пожалуйста, заполните все поля');
                 return;
             }
 
             await saveValues(wallet, sberbonus);
+            saveSavingsFields();
             updatePreviews(wallet, sberbonus);
 
             // Показываем сообщение об успехе
@@ -352,7 +536,11 @@
         btnReset.addEventListener('click', async function() {
             if (confirm('Вы уверены, что хотите сбросить значения к исходным?')) {
                 await saveValues(DEFAULT_WALLET, DEFAULT_SBERBONUS);
+                localStorage.setItem(SAVINGS_TOTAL_KEY, DEFAULT_SAVINGS_TOTAL);
+                localStorage.setItem(SAVINGS_ACCOUNTS_KEY, JSON.stringify(DEFAULT_SAVINGS_ACCOUNTS));
                 loadValues();
+                loadSavingsFields();
+                window.dispatchEvent(new Event('savings-config-updated'));
                 successMessage.textContent = '🔄 Значения сброшены к исходным!';
                 successMessage.classList.add('show');
                 setTimeout(() => {
@@ -373,7 +561,31 @@
             sberbonusPreview.textContent = value;
         });
 
+        savingsTotalInput.addEventListener('input', function() {
+            const value = formatInput(this, true) || DEFAULT_SAVINGS_TOTAL;
+            savingsTotalPreview.textContent = value + ' ₽';
+        });
+
+        accountsEditor.addEventListener('input', function(event) {
+            if (event.target.matches('[data-account-amount]')) {
+                formatInput(event.target, true);
+            }
+            if (event.target.matches('[data-account-rate]')) {
+                const caret = event.target.selectionStart ?? event.target.value.length;
+                event.target.value = formatRate(event.target.value);
+                event.target.setSelectionRange(
+                    Math.min(caret, event.target.value.length),
+                    Math.min(caret, event.target.value.length)
+                );
+            }
+            if (event.target.id.startsWith('accountNumber')) {
+                event.target.value = event.target.value.replace(/\D/g, '');
+            }
+        });
+
         // Инициализация
+        createAccountEditors();
+        loadSavingsFields();
         loadValues();
     </script>
 </body>
